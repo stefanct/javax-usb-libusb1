@@ -204,6 +204,7 @@ public class Libusb1UsbDevice implements UsbDevice, Closeable {
     }
 
     protected static void internalSyncSubmitControl(long libusb_device_ptr, Libusb1UsbControlIrp irp) throws UsbException {
+        // TODO: This should use the asynchronous API as it has better error reporting like data overflow.
         long timeout = 1000;
 
         int transferred = 0;
