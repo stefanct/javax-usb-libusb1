@@ -6,7 +6,8 @@
 /*
  * TODO: Replace "err=%s" with "ret=%s" or more appropriate message where applicable.
  *       Or maybe just "<function name>=xyz"
- */
+ * TODO: Add timestamps.
+*/
 
 static int trace_calls = 0;
 
@@ -26,7 +27,7 @@ void usbw_printf(const char* fmt, ...) {
     vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
 
-    fprintf(stderr, buf);
+    fprintf(stderr, "%s", buf);
     fflush(stderr);
 }
 

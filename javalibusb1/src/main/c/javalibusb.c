@@ -636,7 +636,7 @@ JNIEXPORT jobjectArray JNICALL Java_javalibusb1_libusb1_get_1devices
 JNIEXPORT jint JNICALL Java_javalibusb1_libusb1_control_1transfer
   (JNIEnv *env, jclass klass, jlong libusb_device_ptr, jbyte bmRequestType, jbyte bRequest, jshort wValue, jshort wIndex, jlong timeout, jbyteArray bytes, jint offset, jshort length)
 {
-    int err;
+    int err = -1;
     struct libusb_device* device;
     struct libusb_device_handle *handle = NULL;
     uint8_t* data = NULL;
@@ -696,7 +696,7 @@ enum transferType {
 
 static jint bulk_or_interrupt_transfer(enum transferType transferType, JNIEnv *env, jclass klass, jlong libusb_device_handle_ptr, jbyte bEndpointAddress, jbyteArray bytes, jint offset, jint length, jlong timeout)
 {
-    int err;
+    int err = -1;
     struct libusb_device_handle *handle = (struct libusb_device_handle *)(POINTER_STORAGE_TYPE)libusb_device_handle_ptr;
     uint8_t* data = NULL;
     int transferred;
