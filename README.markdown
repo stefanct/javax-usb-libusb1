@@ -55,6 +55,8 @@ system property "javax.usb.libusb.trace" to true
 Building
 --------
 
+For setting up the building environment please see the [build howto](BUILD.html).
+
 To build the main software a `mvn install` will be sufficient.
 
 If you want to make life easy for you, you want build and use the libusb
