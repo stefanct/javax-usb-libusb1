@@ -1,12 +1,12 @@
 #include "usbw.h"
 
+#include <time.h>
 #include <stdio.h>
 #include <stdarg.h>
 
 /*
  * TODO: Replace "err=%s" with "ret=%s" or more appropriate message where applicable.
  *       Or maybe just "<function name>=xyz"
- * TODO: Add timestamps.
 */
 
 static int trace_calls = 0;
@@ -17,6 +17,9 @@ void usbw_set_trace_calls(int on) {
 
 void usbw_printf(const char* fmt, ...) {
     char buf[1024];
+    char timebuf[20];
+    time_t curtime;
+    struct tm *loctime;
     va_list args;
 
     if(!trace_calls) {
@@ -27,7 +30,10 @@ void usbw_printf(const char* fmt, ...) {
     vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
 
-    fprintf(stderr, "%s", buf);
+    curtime = time(NULL);
+    loctime = localtime(&curtime);
+    strftime (timebuf, sizeof(timebuf), "%Y-%m-%dT%H:%M:%S", loctime);
+    fprintf(stderr, "%s - %s", timebuf, buf);
     fflush(stderr);
 }
 
