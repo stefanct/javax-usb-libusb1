@@ -14,8 +14,14 @@ public class Libusb1UsbPipe implements UsbPipe {
     private final Libusb1UsbEndpoint endpoint;
     private boolean open;
 
+    // oh my; the RI is bloat.
+    // but firing the events in another thread and making it threadsafe may be useful,
+    // although it is not specified anywhere? - stefan
+    private final List<UsbPipeListener> listeners;
+
     public Libusb1UsbPipe(Libusb1UsbEndpoint endpoint) {
         this.endpoint = endpoint;
+        listeners = new ArrayList<UsbPipeListener>(0);
     }
 
     // -----------------------------------------------------------------------
@@ -27,7 +33,16 @@ public class Libusb1UsbPipe implements UsbPipe {
     }
 
     public void addUsbPipeListener(UsbPipeListener listener) {
-        throw new RuntimeException("Not implemented");
+        synchronized(listeners){
+            if (!listeners.contains(listener))
+                listeners.add(listener);
+        }
+    }
+
+    public void removeUsbPipeListener(UsbPipeListener listener) {
+        synchronized(listeners){
+            listeners.remove(listener);
+        }
     }
 
     public UsbIrp asyncSubmit(byte[] data) {
@@ -67,22 +82,23 @@ public class Libusb1UsbPipe implements UsbPipe {
     }
 
     public void open() throws UsbException {
-        if (!isActive()) {
-            throw new UsbNotActiveException();
-        }
+        try{
+            if (!isActive()) {
+                throw new UsbNotActiveException();
+            }
 
-        if (!endpoint.getUsbInterface().isClaimed()) {
-            throw new UsbNotClaimedException();
-        }
+            if (!endpoint.getUsbInterface().isClaimed()) {
+                throw new UsbNotClaimedException();
+            }
 
-        if (open) {
-            throw new UsbException("Already open");
+            if (open) {
+                throw new UsbException("Already open");
+            }
+            open = true;
+        } catch(UsbException e){
+            fireUsbPipeErrorEvent(new UsbPipeErrorEvent(this, e));
+            throw e;
         }
-        open = true;
-    }
-
-    public void removeUsbPipeListener(UsbPipeListener listener) {
-        throw new RuntimeException("Not implemented");
     }
 
     public int syncSubmit(byte[] data) throws UsbException, UsbNotActiveException, UsbNotOpenException, java.lang.IllegalArgumentException {
@@ -109,44 +125,72 @@ public class Libusb1UsbPipe implements UsbPipe {
     private int internalSyncSubmit(UsbIrp irp) throws UsbException {
         // From what I can tell from the API you don't have to open a device to send control packets.
 
-        if (irp instanceof UsbControlIrp) {
-            if (endpoint.getType() != ENDPOINT_TYPE_CONTROL) {
-                throw new IllegalArgumentException("This is not a control endpoint.");
+        try{
+            if (irp instanceof UsbControlIrp) {
+                if (endpoint.getType() != ENDPOINT_TYPE_CONTROL) {
+                    throw new IllegalArgumentException("This is not a control endpoint.");
+                }
+
+                internalSyncSubmitControl(endpoint.usbInterface.libusb_device_handle_ptr, createControlIrp((UsbControlIrp) irp));
+                return irp.getActualLength();
             }
 
-            internalSyncSubmitControl(endpoint.usbInterface.libusb_device_handle_ptr, createControlIrp((UsbControlIrp) irp));
-            return irp.getActualLength();
+            if (!isOpen()) {
+                throw new UsbNotOpenException();
+            }
+
+            if (!isActive()) {
+                throw new UsbNotActiveException();
+            }
+
+            // 0 means infinite, not sure if that's what a user really want. I think there is an implicit 5 second
+            // default where - trygve
+            // the javadoc says "This will block until either all data is transferred or an error occurrs." so imho 0 is correct.
+            // if the user needs non-blocking access he has to use asyncSubmit :/ - stefan
+            int timeout = 0;
+
+            if (getUsbEndpoint().getType() == ENDPOINT_TYPE_BULK) {
+                int transferred = libusb1.bulk_transfer(endpoint.usbInterface.libusb_device_handle_ptr,
+                    getUsbEndpoint().getUsbEndpointDescriptor().bEndpointAddress(),
+                    irp.getData(), irp.getOffset(), irp.getLength(), timeout);
+
+                irp.setActualLength(transferred);
+                irp.complete();
+                fireUsbPipeDataEvent(new UsbPipeDataEvent(this, irp));
+                return transferred;
+            } else if (getUsbEndpoint().getType() == ENDPOINT_TYPE_INTERRUPT) {
+                int transferred = libusb1.interrupt_transfer(endpoint.usbInterface.libusb_device_handle_ptr,
+                    getUsbEndpoint().getUsbEndpointDescriptor().bEndpointAddress(),
+                    irp.getData(), irp.getOffset(), irp.getLength(), timeout);
+
+                irp.setActualLength(transferred);
+                irp.complete();
+                fireUsbPipeDataEvent(new UsbPipeDataEvent(this, irp));
+                return transferred;
+            }
+            throw new RuntimeException("Transfer type not implemented");
+        } catch(UsbException e){
+            irp.setUsbException(e);
+            fireUsbPipeErrorEvent(new UsbPipeErrorEvent(this, irp));
+            throw e;
         }
+    }
 
-        if (!isOpen()) {
-            throw new UsbNotOpenException();
+    private void fireUsbPipeDataEvent(UsbPipeDataEvent e){
+        synchronized(listeners){
+            try{
+                for (UsbPipeListener l : listeners)
+                    l.dataEventOccurred(e);
+            } catch(Exception ignored){}
         }
+    }
 
-        if (!isActive()) {
-            throw new UsbNotActiveException();
+    private void fireUsbPipeErrorEvent(UsbPipeErrorEvent e){
+        synchronized(listeners){
+            try{
+                for (UsbPipeListener l : listeners)
+                    l.errorEventOccurred(e);
+            } catch (Exception ignored){}
         }
-
-        // 0 means infinite, not sure if that's what a user really want. I think there is an implicit 5 second
-        // default where - trygve
-        int timeout = 0;
-
-        if (getUsbEndpoint().getType() == ENDPOINT_TYPE_BULK) {
-            int transferred = libusb1.bulk_transfer(endpoint.usbInterface.libusb_device_handle_ptr,
-                getUsbEndpoint().getUsbEndpointDescriptor().bEndpointAddress(),
-                irp.getData(), irp.getOffset(), irp.getLength(), timeout);
-
-            irp.setActualLength(transferred);
-            irp.complete();
-            return transferred;
-        } else if (getUsbEndpoint().getType() == ENDPOINT_TYPE_INTERRUPT) {
-            int transferred = libusb1.interrupt_transfer(endpoint.usbInterface.libusb_device_handle_ptr,
-                getUsbEndpoint().getUsbEndpointDescriptor().bEndpointAddress(),
-                irp.getData(), irp.getOffset(), irp.getLength(), timeout);
-
-            irp.setActualLength(transferred);
-            irp.complete();
-            return transferred;
-        }
-        throw new RuntimeException("Transfer type not implemented");
     }
 }
