@@ -1,13 +1,15 @@
 package javalibusb1;
 
-import static java.lang.Boolean.*;
-import static java.lang.Integer.*;
-import static javax.usb.UsbConst.*;
-
 import javax.usb.*;
-import javax.usb.event.*;
-import javax.usb.impl.*;
-import java.util.*;
+import javax.usb.event.UsbServicesListener;
+import javax.usb.impl.AbstractRootUsbHub;
+import javax.usb.impl.DefaultUsbDeviceDescriptor;
+import java.util.Arrays;
+import java.util.List;
+
+import static java.lang.Boolean.parseBoolean;
+import static java.lang.Integer.parseInt;
+import static javax.usb.UsbConst.HUB_CLASSCODE;
 
 /**
  * The starting point of the implementation.
@@ -131,6 +133,7 @@ public class Libusb1UsbServices implements UsbServices {
 
     private libusb1 libusb;
     private List<UsbDevice> devices;
+    private final AsyncHandler async;
 
     public Libusb1UsbServices() throws UsbException {
         boolean trace;
@@ -149,6 +152,7 @@ public class Libusb1UsbServices implements UsbServices {
         // the library so that the libusb_set_trace and usbw debugging is
         // enabled as soon as possible.
         libusb = libusb1.create(debug_level);
+	    async = new AsyncHandler(libusb);
     }
 
     @Override
@@ -183,7 +187,7 @@ public class Libusb1UsbServices implements UsbServices {
         return new LibUsb1RootUsbHub(devices);
     }
 
-    private class LibUsb1RootUsbHub extends AbstractRootUsbHub {
+private class LibUsb1RootUsbHub extends AbstractRootUsbHub {
         private List<UsbDevice> usbDevices;
 
         public LibUsb1RootUsbHub(List<UsbDevice> usbDevices) {
@@ -204,4 +208,30 @@ public class Libusb1UsbServices implements UsbServices {
             throw new RuntimeException("Not a valid debug level: '" + s + "'.");
         }
     }
+
+private static class AsyncHandler extends Thread{
+
+	private libusb1 libusb;
+	public final int timeoutUS;
+
+	private AsyncHandler(libusb1 libusb){
+		this.libusb = libusb;
+//		timeoutUS = 200000; // 200ms
+		timeoutUS = 10000000; // 10s
+		setName("libusb AsyncHandler");
+		setDaemon(true); // who should call a shutdown method anyway?
+		this.start();
+	}
+
+	@Override
+	public void run(){
+		while(true){
+			try{
+				libusb.handle_events_timeout(timeoutUS);
+			} catch(Exception e){
+				e.printStackTrace();
+			}
+		}
+	}
+}
 }

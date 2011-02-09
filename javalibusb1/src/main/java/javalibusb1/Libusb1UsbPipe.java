@@ -1,13 +1,17 @@
 package javalibusb1;
 
-import static javalibusb1.Libusb1UsbControlIrp.*;
-import static javalibusb1.Libusb1UsbDevice.*;
-import static javax.usb.UsbConst.*;
-
 import javax.usb.*;
-import javax.usb.event.*;
-import javax.usb.util.*;
-import java.util.*;
+import javax.usb.event.UsbPipeDataEvent;
+import javax.usb.event.UsbPipeErrorEvent;
+import javax.usb.event.UsbPipeListener;
+import javax.usb.util.DefaultUsbControlIrp;
+import javax.usb.util.DefaultUsbIrp;
+import java.util.ArrayList;
+import java.util.List;
+
+import static javalibusb1.Libusb1UsbControlIrp.createControlIrp;
+import static javalibusb1.Libusb1UsbDevice.internalSyncSubmitControl;
+import static javax.usb.UsbConst.*;
 
 public class Libusb1UsbPipe implements UsbPipe {
 
@@ -15,7 +19,7 @@ public class Libusb1UsbPipe implements UsbPipe {
     private boolean open;
 
     // oh my; the RI is bloat.
-    // but firing the events in another thread and making it threadsafe may be useful,
+    // but firing the events in another thread (todo) and making it threadsafe (done) may be useful,
     // although it is not specified anywhere? - stefan
     private final List<UsbPipeListener> listeners;
 
@@ -45,17 +49,68 @@ public class Libusb1UsbPipe implements UsbPipe {
         }
     }
 
-    public UsbIrp asyncSubmit(byte[] data) {
-        throw new RuntimeException("Not implemented");
+    public UsbIrp asyncSubmit(byte[] data) throws UsbException{
+	    UsbIrp irp = new DefaultUsbIrp();
+	    irp.setData(data);
+	    asyncSubmit(irp);
+	    return irp;
     }
 
-    public void asyncSubmit(List list) {
-        throw new RuntimeException("Not implemented");
+    public void asyncSubmit(List list) throws UsbException{
+	    // generics anyone?! :/
+	    for (Object o : list) {
+		    if (o != null && UsbIrp.class == o.getClass())
+	            asyncSubmit((UsbIrp)o);
+		    else
+			    throw new IllegalArgumentException("The List contains a non-UsbIrp object."); // like RI
+	    }
     }
 
-    public void asyncSubmit(UsbIrp irp) {
-        throw new RuntimeException("Not implemented");
+    public void asyncSubmit(UsbIrp irp) throws UsbException{
+	    // TODO: isochronous and control transfers
+	    UsbException ex;
+	    try{
+			if (!isOpen()) {
+				throw new UsbNotOpenException();
+			}
+
+			if (!isActive()) {
+				throw new UsbNotActiveException();
+			}
+
+			long trans_ptr = libusb1.alloc_transfer(0);
+			int err = libusb1.fill_and_submit_transfer(this, trans_ptr,
+													   endpoint.getType(),
+													   endpoint.usbInterface.libusb_device_handle_ptr,
+													   endpoint.descriptor.bEndpointAddress(),
+													   irp.getData(),
+													   irp.getOffset(),
+													   irp.getLength(), irp,
+													   0);
+			if(0 == err){
+				System.err.println(irp+" submitted as 0x"+Long.toHexString(trans_ptr));
+				return;
+			}
+			ex = new UsbPlatformException("Submitting failed", err);
+		} catch(UsbException e){
+			ex = e;
+		}
+	    fireUsbPipeErrorEvent(new UsbPipeErrorEvent(this, irp));
+	    throw ex;
     }
+
+	public void asyncCallback(UsbIrp irp) {
+		irp.complete();
+		if(irp.isUsbException())
+			fireUsbPipeErrorEvent(new UsbPipeErrorEvent(this, irp));
+		else
+			fireUsbPipeDataEvent(new UsbPipeDataEvent(this, irp));
+
+		synchronized(irp){
+			irp.notifyAll();
+		}
+		System.err.println(irp+" completed");
+	}
 
     public void close() {
         open = false;
@@ -105,7 +160,8 @@ public class Libusb1UsbPipe implements UsbPipe {
         // This is not correct after what I understand from the reference implementation
         UsbIrp irp = new DefaultUsbIrp();
         irp.setData(data);
-        return internalSyncSubmit(irp);
+	    syncSubmit(irp);
+	    return irp.getActualLength();
     }
 
     public void syncSubmit(List<UsbIrp> list) throws UsbException, UsbNotActiveException, UsbNotOpenException, java.lang.IllegalArgumentException {
@@ -114,67 +170,47 @@ public class Libusb1UsbPipe implements UsbPipe {
         }
     }
 
-    public void syncSubmit(UsbIrp irp) throws UsbException, UsbNotActiveException, UsbNotOpenException, java.lang.IllegalArgumentException {
-        internalSyncSubmit(irp);
+    @SuppressWarnings({"ResultOfMethodCallIgnored"})
+    synchronized public void syncSubmit(UsbIrp irp) throws UsbException, UsbNotActiveException, UsbNotOpenException, java.lang.IllegalArgumentException {
+	    // From what I can tell from the API you don't have to open a device to send control packets.
+	    try{
+	        if (irp instanceof UsbControlIrp) {
+	            if (endpoint.getType() != ENDPOINT_TYPE_CONTROL) {
+	                throw new IllegalArgumentException("This is not a control endpoint.");
+	            }
+
+	            internalSyncSubmitControl(endpoint.usbInterface.libusb_device_handle_ptr, createControlIrp((UsbControlIrp)irp));
+		        irp.getActualLength();
+		        return;
+	        }
+	    } catch(UsbException e){
+	        irp.setUsbException(e);
+	        fireUsbPipeErrorEvent(new UsbPipeErrorEvent(this, irp));
+	        throw e;
+	    }
+	    try{
+			synchronized(irp){
+				asyncSubmit(irp);
+				while(!irp.isComplete()){
+					irp.wait();
+				}
+			}
+		    if(irp.isUsbException()){
+			    System.err.println(irp+" failed");
+			    throw irp.getUsbException();
+		    }
+	    }catch(InterruptedException cause){
+		    UsbPlatformException e = new UsbPlatformException("Interrupted.");
+		    e.initCause(cause);
+		    irp.setUsbException(e);
+		    throw e;
+	    }
+
     }
 
     // -----------------------------------------------------------------------
     //
     // -----------------------------------------------------------------------
-
-    private int internalSyncSubmit(UsbIrp irp) throws UsbException {
-        // From what I can tell from the API you don't have to open a device to send control packets.
-
-        try{
-            if (irp instanceof UsbControlIrp) {
-                if (endpoint.getType() != ENDPOINT_TYPE_CONTROL) {
-                    throw new IllegalArgumentException("This is not a control endpoint.");
-                }
-
-                internalSyncSubmitControl(endpoint.usbInterface.libusb_device_handle_ptr, createControlIrp((UsbControlIrp) irp));
-                return irp.getActualLength();
-            }
-
-            if (!isOpen()) {
-                throw new UsbNotOpenException();
-            }
-
-            if (!isActive()) {
-                throw new UsbNotActiveException();
-            }
-
-            // 0 means infinite, not sure if that's what a user really want. I think there is an implicit 5 second
-            // default where - trygve
-            // the javadoc says "This will block until either all data is transferred or an error occurrs." so imho 0 is correct.
-            // if the user needs non-blocking access he has to use asyncSubmit :/ - stefan
-            int timeout = 0;
-
-            if (getUsbEndpoint().getType() == ENDPOINT_TYPE_BULK) {
-                int transferred = libusb1.bulk_transfer(endpoint.usbInterface.libusb_device_handle_ptr,
-                    getUsbEndpoint().getUsbEndpointDescriptor().bEndpointAddress(),
-                    irp.getData(), irp.getOffset(), irp.getLength(), timeout);
-
-                irp.setActualLength(transferred);
-                irp.complete();
-                fireUsbPipeDataEvent(new UsbPipeDataEvent(this, irp));
-                return transferred;
-            } else if (getUsbEndpoint().getType() == ENDPOINT_TYPE_INTERRUPT) {
-                int transferred = libusb1.interrupt_transfer(endpoint.usbInterface.libusb_device_handle_ptr,
-                    getUsbEndpoint().getUsbEndpointDescriptor().bEndpointAddress(),
-                    irp.getData(), irp.getOffset(), irp.getLength(), timeout);
-
-                irp.setActualLength(transferred);
-                irp.complete();
-                fireUsbPipeDataEvent(new UsbPipeDataEvent(this, irp));
-                return transferred;
-            }
-            throw new RuntimeException("Transfer type not implemented");
-        } catch(UsbException e){
-            irp.setUsbException(e);
-            fireUsbPipeErrorEvent(new UsbPipeErrorEvent(this, irp));
-            throw e;
-        }
-    }
 
     private void fireUsbPipeDataEvent(UsbPipeDataEvent e){
         synchronized(listeners){
@@ -193,4 +229,6 @@ public class Libusb1UsbPipe implements UsbPipe {
             } catch (Exception ignored){}
         }
     }
+
 }
+

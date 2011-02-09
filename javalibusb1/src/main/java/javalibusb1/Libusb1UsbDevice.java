@@ -1,12 +1,15 @@
 package javalibusb1;
 
-import static javalibusb1.Libusb1UsbControlIrp.createControlIrp;
-
 import javax.usb.*;
-import javax.usb.event.*;
-import javax.usb.util.*;
-import java.io.*;
-import java.util.*;
+import javax.usb.event.UsbDeviceListener;
+import javax.usb.util.DefaultUsbControlIrp;
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import static javalibusb1.Libusb1UsbControlIrp.createControlIrp;
 
 /**
  * TODO: Subclass and use a Libusb1UsbHub if this is a hub.
@@ -200,7 +203,7 @@ public class Libusb1UsbDevice implements UsbDevice, Closeable {
         }
     }
 
-    public static void internalSyncSubmitControl(long libusb_device_ptr, Libusb1UsbControlIrp irp) throws UsbException {
+    protected static void internalSyncSubmitControl(long libusb_device_ptr, Libusb1UsbControlIrp irp) throws UsbException {
         long timeout = 1000;
 
         int transferred = 0;

@@ -255,3 +255,42 @@ int usbw_interrupt_transfer(struct libusb_device_handle *handle, unsigned char e
     usbw_printf("RET: %s: err=%d (%s)\n", __func__, err, usbw_error_to_string(err));
     return err;
 }
+
+/*************************************************************************
+ * Asynchronous device I/O
+ */
+
+struct libusb_transfer *usbw_alloc_transfer(int iso_packets){
+    usbw_printf("PRE: %s(%d)\n", __func__, iso_packets);
+    struct libusb_transfer *trans = libusb_alloc_transfer(iso_packets);
+    usbw_printf("RET: %s: trans=%p\n", __func__, trans);
+    return trans;
+}
+
+int usbw_submit_transfer(struct libusb_transfer *transfer){
+    usbw_printf("PRE: %s(%p)\n", __func__, transfer);
+    int err = libusb_submit_transfer(transfer);
+    usbw_printf("RET: %s: err=%d (%s)\n", __func__, err, usbw_error_to_string(err));
+    return err;
+}
+
+int usbw_cancel_transfer(struct libusb_transfer *transfer){
+    usbw_printf("PRE: %s(%p)\n", __func__, transfer);
+    int err = libusb_cancel_transfer(transfer);
+    usbw_printf("RET: %s: err=%d (%s)\n", __func__, err, usbw_error_to_string(err));
+    return err;
+}
+
+void usbw_free_transfer(struct libusb_transfer *transfer){
+    usbw_printf("PRE: %s(%p)\n", __func__, transfer);
+    libusb_free_transfer(transfer);
+    usbw_printf("RET: %s: void\n", __func__);
+}
+
+int usbw_handle_events_timeout(libusb_context *ctx, struct timeval *tv){
+    // this will be fired several times each second...
+    //usbw_printf("PRE: %s(%p, %p)\n", __func__, ctx, tv);
+    int err = libusb_handle_events_timeout(ctx, tv);
+    //usbw_printf("RET: %s: err=%d (%s)\n", __func__, err, usbw_error_to_string(err));
+    return err;
+}

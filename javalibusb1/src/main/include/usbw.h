@@ -51,4 +51,14 @@ int usbw_control_transfer(struct libusb_device_handle *handle, uint8_t bmRequest
 int usbw_bulk_transfer(struct libusb_device_handle *handle, unsigned char endpoint, unsigned char *data, int length, int *transferred, unsigned int timeout);
 int usbw_interrupt_transfer(struct libusb_device_handle *handle, unsigned char endpoint, unsigned char *data, int length, int *transferred, unsigned int timeout);
 
+/*************************************************************************
+ * Asynchronous device I/O
+ */
+
+struct libusb_transfer *usbw_alloc_transfer(int iso_packets);
+int usbw_submit_transfer(struct libusb_transfer *transfer);
+int usbw_cancel_transfer(struct libusb_transfer *transfer);
+void usbw_free_transfer(struct libusb_transfer *transfer);
+int usbw_handle_events_timeout(libusb_context *ctx, struct timeval *tv);
+
 #endif

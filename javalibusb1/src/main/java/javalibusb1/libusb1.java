@@ -1,12 +1,16 @@
 package javalibusb1;
 
-import static javalibusb1.Libusb1UsbServices.*;
-import static javalibusb1.Libusb1Utils.*;
-
-import javax.usb.*;
+import javax.usb.UsbDevice;
+import javax.usb.UsbException;
+import javax.usb.UsbIrp;
 import java.io.*;
-import java.net.*;
-import java.util.*;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+
+import static javalibusb1.Libusb1UsbServices.*;
+import static javalibusb1.Libusb1Utils.closeSilently;
+import static javalibusb1.Libusb1Utils.loadProperty;
 
 class libusb1 implements Closeable {
 
@@ -36,6 +40,10 @@ class libusb1 implements Closeable {
 
     public void set_debug(int level) {
         set_debug(libusb_context_ptr, level);
+    }
+
+    public void handle_events_timeout(long timeoutUS) {
+        handle_events_timeout(libusb_context_ptr, timeoutUS);
     }
 
     /**
@@ -69,11 +77,23 @@ class libusb1 implements Closeable {
     public static int control_transfer(long libusb_device_ptr, byte bmRequestType, byte bRequest, short wValue, short wIndex, long timeout,
                                        byte[] bytes, int offset, short length) throws UsbException;
 
-    native
-    public static int bulk_transfer(long libusb_device_handle, byte bEndpointAddress, byte[] buffer, int offest, int length, long timeout);
+//    native
+//    public static int bulk_transfer(long libusb_device_handle, byte bEndpointAddress, byte[] buffer, int offest, int length, long timeout);
+//
+//    native
+//    public static int interrupt_transfer(long libusb_device_handle, byte bEndpointAddress, byte[] buffer, int offest, int length, long timeout);
 
     native
-    public static int interrupt_transfer(long libusb_device_handle, byte bEndpointAddress, byte[] buffer, int offest, int length, long timeout);
+    public static long alloc_transfer(int iso_packets);
+
+    native
+    public static int fill_and_submit_transfer(Libusb1UsbPipe pipe, long trans_ptr, byte type, long libusb_device_handle, byte bEndpointAddress, byte[] buffer, int offset, int length, UsbIrp sourceIrp, long timeout) throws UsbException;
+
+    native
+    public static int cancel_transfer(long trans_ptr);
+
+//    native
+//    public static void free_transfer(long trans_ptr);
 
     static {
         String path = loadProperty(JAVAX_USB_LIBUSB_JAVALIBUSB1_PATH_PROPERTY, JAVAX_USB_LIBUSB_JAVALIBUSB1_PATH_ENV);
@@ -86,6 +106,9 @@ class libusb1 implements Closeable {
             NarSystem.loadLibrary();
         }
     }
+
+    native
+    private static int handle_events_timeout(long libusb_context, long timeoutUSec);
 
     private static boolean loadFromPath(String path) {
         try {
