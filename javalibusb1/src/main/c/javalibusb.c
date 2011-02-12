@@ -95,9 +95,14 @@ usb_init() should be called as a part of the static initializer.
 
 static void releaseReferences(JNIEnv *env);
 static JavaVM *jvm; // needed to get a JNIEnv pointer in asyncCallback
+static int debug = 0;
 
 static void debug_printf(const char *format, ...) {
     char p[1024];
+
+    if(!debug) {
+        return;
+    }
 
     va_list ap;
     va_start(ap, format);
@@ -331,6 +336,8 @@ JNIEXPORT jobject JNICALL Java_javalibusb1_libusb1_create
   (JNIEnv *env, jclass klass, jint debug_level)
 {
     struct libusb_context *context;
+    
+    debug = debug_level; // debug is boolean
 
     /* Initalization, Phase I */
     if(usbw_init(&context)) {
