@@ -200,8 +200,7 @@ public class Libusb1UsbPipe implements UsbPipe {
 			    throw irp.getUsbException();
 		    }
 	    }catch(InterruptedException cause){
-		    UsbPlatformException e = new UsbPlatformException("Interrupted.");
-		    e.initCause(cause);
+		    UsbPlatformException e = new UsbPlatformException("Interrupted.", cause);
 		    irp.setUsbException(e);
 		    throw e;
 	    }
