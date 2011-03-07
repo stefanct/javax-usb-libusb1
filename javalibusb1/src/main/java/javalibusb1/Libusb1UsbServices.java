@@ -133,7 +133,6 @@ public class Libusb1UsbServices implements UsbServices {
 
     private libusb1 libusb;
     private List<UsbDevice> devices;
-    private final AsyncHandler async;
 
     public Libusb1UsbServices() throws UsbException {
         boolean trace;
@@ -152,7 +151,7 @@ public class Libusb1UsbServices implements UsbServices {
         // the library so that the libusb_set_trace and usbw debugging is
         // enabled as soon as possible.
         libusb = libusb1.create(debug_level);
-	    async = new AsyncHandler(libusb);
+	    new AsyncHandler(libusb).start();
     }
 
     @Override
@@ -220,7 +219,6 @@ private static class AsyncHandler extends Thread{
 		timeoutUS = 10000000; // 10s
 		setName("libusb AsyncHandler");
 		setDaemon(true); // who should call a shutdown method anyway?
-		this.start();
 	}
 
 	@Override
