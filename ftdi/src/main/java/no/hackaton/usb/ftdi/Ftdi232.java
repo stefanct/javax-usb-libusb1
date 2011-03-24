@@ -4,7 +4,7 @@ import static javax.usb.UsbConst.*;
 import static no.hackaton.usb.ftdi.Ftdi232Util.*;
 
 import javax.usb.*;
-import javax.usb.util.*;
+import javax.usb.extra.ExtraUsbUtil;
 import java.io.*;
 
 public class Ftdi232 implements Closeable {
@@ -32,9 +32,9 @@ public class Ftdi232 implements Closeable {
     }
 
     public void close() throws IOException {
-        UsbUtil.close(in);
-        UsbUtil.close(out);
-        UsbUtil.close(device);
+        ExtraUsbUtil.close(in);
+        ExtraUsbUtil.close(out);
+        ExtraUsbUtil.close(device);
     }
 
     public void setBaudRate(int requestedBaudRate) throws UsbException {

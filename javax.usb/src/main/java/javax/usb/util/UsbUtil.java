@@ -1,152 +1,343 @@
 package javax.usb.util;
 
 import javax.usb.*;
-import java.io.*;
+import javax.usb.event.UsbDeviceListener;
+import javax.usb.event.UsbPipeListener;
+import java.io.UnsupportedEncodingException;
+import java.util.List;
 
-public class UsbUtil {
+public class UsbUtil{
 
-    private static final char[] hexDigits = new char[]{
-        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+public static class SynchronizedUsbPipe implements UsbPipe{
 
-    // -----------------------------------------------------------------------
-    // Hex Formatting
-    // -----------------------------------------------------------------------
+	protected java.lang.Object openLock;
+	protected java.lang.Object submitLock;
+	public UsbPipe usbPipe;
 
-    public static String toHexString(byte b) {
-        int i = unsignedInt(b);
-        return new String(new char[]{
-            hexDigits[i >> 4],
-            hexDigits[i & 0x0f],
-        });
-    }
+	public SynchronizedUsbPipe(UsbPipe usbPipe){
+		this.usbPipe = usbPipe;
+	}
 
-    public static String toHexString(short i) {
-        return new String(new char[]{
-            hexDigits[(i >> 12) & 0x0f],
-            hexDigits[(i >> 8) & 0x0f],
-            hexDigits[(i >> 4) & 0x0f],
-            hexDigits[i & 0x0f],
-        });
-    }
+	public void abortAllSubmissions() throws UsbNotActiveException, UsbNotOpenException, UsbDisconnectedException{
+	}
 
-    public static String toHexString(int i) {
-        return new String(new char[]{
-            hexDigits[(i >> 28) & 0x0f],
-            hexDigits[(i >> 24) & 0x0f],
-            hexDigits[(i >> 20) & 0x0f],
-            hexDigits[(i >> 16) & 0x0f],
-            hexDigits[(i >> 12) & 0x0f],
-            hexDigits[(i >> 8) & 0x0f],
-            hexDigits[(i >> 4) & 0x0f],
-            hexDigits[i & 0x0f],
-        });
-    }
+	public void addUsbPipeListener(UsbPipeListener listener){
+	}
 
-    // -----------------------------------------------------------------------
-    // To Unsigned
-    // -----------------------------------------------------------------------
+	public UsbIrp asyncSubmit(byte[] data)
+			throws UsbException, UsbNotActiveException, UsbNotOpenException, IllegalArgumentException, UsbDisconnectedException{
+		return null;
+	}
 
-    public static short unsignedShort(byte b) {
-        return (short) (0x00ff & b);
-    }
+	public void asyncSubmit(List list)
+			throws UsbException, UsbNotActiveException, UsbNotOpenException, IllegalArgumentException, UsbDisconnectedException{
+	}
 
-    public static int unsignedInt(byte b) {
-        return 0x000000ff & b;
-    }
+	public void asyncSubmit(UsbIrp irp)
+			throws UsbException, UsbNotActiveException, UsbNotOpenException, IllegalArgumentException, UsbDisconnectedException{
+	}
 
-    public static int unsignedInt(short s) {
-        return 0x0000ffff & s;
-    }
+	public void close() throws UsbException, UsbNotActiveException, UsbNotOpenException, UsbDisconnectedException{
+	}
 
-    public static long unsignedLong(byte b) {
-        return 0x00000000000000ff & b;
-    }
+	public UsbControlIrp createUsbControlIrp(byte bmRequestType, byte bRequest, short wValue, short wIndex){
+		return null;
+	}
 
-    public static long unsignedLong(short s) {
-        return 0x000000000000ffff & s;
-    }
+	public UsbIrp createUsbIrp(){
+		return null;
+	}
 
-    public static long unsignedLong(int s) {
-        return 0x00000000ffffffff & s;
-    }
+	public UsbEndpoint getUsbEndpoint(){
+		return null;
+	}
 
-    public static String twoDigitBdc(short bdc) {
-        return ((bdc & 0xf000) >> 12) + ((bdc & 0x0f00) >> 8) + "." +
-            ((bdc & 0x00f0) >> 4) + (bdc & 0x000f);
-    }
+	public boolean isActive(){
+		return false;
+	}
 
-    public static String getSpeedString(Object object)
-    {
-        if(object == null) {
-            return "null";
-        }
+	public boolean isOpen(){
+		return false;
+	}
 
-        if(object == UsbConst.DEVICE_SPEED_LOW) {
-            return "Low";
-        }
+	public void open() throws UsbException, UsbNotActiveException, UsbNotClaimedException, UsbDisconnectedException{
+	}
 
-        if(object == UsbConst.DEVICE_SPEED_FULL) {
-            return "Full";
-        }
+	public void removeUsbPipeListener(UsbPipeListener listener){
+	}
 
-        if(object == UsbConst.DEVICE_SPEED_HIGH) {
-            return "High";
-        }
+	public int syncSubmit(byte[] data)
+			throws UsbException, UsbNotActiveException, UsbNotOpenException, IllegalArgumentException, UsbDisconnectedException{
+		return 0;
+	}
 
-        return "Invalid";
-    }
+	public void syncSubmit(List<UsbIrp> list)
+			throws UsbException, UsbNotActiveException, UsbNotOpenException, IllegalArgumentException, UsbDisconnectedException{
+	}
 
-    // -----------------------------------------------------------------------
-    // Extras
-    // -----------------------------------------------------------------------
+	public void syncSubmit(UsbIrp irp)
+			throws UsbException, UsbNotActiveException, UsbNotOpenException, IllegalArgumentException, UsbDisconnectedException{
+	}
+}
 
-    public static String decodeLibusbError(int code) {
-        switch (code) {
-            case 0:
-                return "success";
-            case -1:
-                return "io";
-            case -2:
-                return "invalid parameter";
-            case -3:
-                return "access";
-            case -4:
-                return "no device";
-            case -5:
-                return "not found";
-            case -6:
-                return "busy";
-            case -7:
-                return "timeout";
-            case -8:
-                return "overflow";
-            case -9:
-                return "pipe";
-            case -10:
-                return "interrupted";
-            case -11:
-                return "no mem";
-            case -12:
-                return "not supported";
-            case -99:
-                return "other";
-            default:
-                return "unknown";
-        }
-    }
+public static class SynchronizedUsbDevice implements UsbDevice{
 
-    /**
-     * Not a part of the specification.
-     */
-    public static void close(Object o) {
-        if (o instanceof Closeable) {
-            Closeable closeable = (Closeable) o;
+	protected java.lang.Object listenerLock;
+	protected java.lang.Object submitLock;
+	public UsbDevice usbDevice;
 
-            try {
-                closeable.close();
-            } catch (IOException e) {
-                // ignore
-            }
-        }
-    }
+	public SynchronizedUsbDevice(UsbDevice usbDevice){
+		this.usbDevice = usbDevice;
+		throw new RuntimeException("Not implemented");
+	}
+
+	public String getManufacturerString() throws UsbException, UnsupportedEncodingException, UsbDisconnectedException{
+		return null;
+	}
+
+	public String getSerialNumberString() throws UsbException, UnsupportedEncodingException, UsbDisconnectedException{
+		return null;
+	}
+
+	public String getProductString() throws UsbException, UnsupportedEncodingException, UsbDisconnectedException{
+		return null;
+	}
+
+	public UsbStringDescriptor getUsbStringDescriptor(byte index){
+		return null;
+	}
+
+	public String getString(byte index) throws UsbException, UsbDisconnectedException{
+		return null;
+	}
+
+	public UsbDeviceDescriptor getUsbDeviceDescriptor(){
+		return null;
+	}
+
+	public Object getSpeed(){
+		return null;
+	}
+
+	public boolean isConfigured(){
+		return false;
+	}
+
+	public boolean isUsbHub(){
+		return false;
+	}
+
+	public void addUsbDeviceListener(UsbDeviceListener listener){
+	}
+
+	public void removeUsbDeviceListener(UsbDeviceListener listener){
+	}
+
+	public UsbControlIrp createUsbControlIrp(byte bmRequestType, byte bRequest, short wValue, short wIndex){
+		return null;
+	}
+
+	public void asyncSubmit(List<UsbControlIrp> list) throws UsbException, IllegalArgumentException, UsbDisconnectedException{
+	}
+
+	public void asyncSubmit(UsbControlIrp irp) throws UsbException, IllegalArgumentException, UsbDisconnectedException{
+	}
+
+	public void syncSubmit(List<UsbControlIrp> list) throws UsbException, IllegalArgumentException, UsbDisconnectedException{
+	}
+
+	public void syncSubmit(UsbControlIrp irp) throws UsbException, IllegalArgumentException, UsbDisconnectedException{
+	}
+
+	public UsbPort getParentUsbPort() throws UsbDisconnectedException{
+		return null;
+	}
+
+	public byte getActiveUsbConfigurationNumber(){
+		return 0;
+	}
+
+	public UsbConfiguration getActiveUsbConfiguration(){
+		return null;
+	}
+
+	public boolean containsUsbConfiguration(byte number){
+		return false;
+	}
+
+	public UsbConfiguration getUsbConfiguration(byte number){
+		return null;
+	}
+
+	public List<UsbConfiguration> getUsbConfigurations(){
+		return null;
+	}
+}
+
+/** API violation with a warm cup of "fuck you". */
+private UsbUtil(){
+}
+
+public static String getSpeedString(Object object){
+	if(object == null){
+		return "null";
+	}
+
+	if(object == UsbConst.DEVICE_SPEED_LOW){
+		return "Low";
+	}
+
+	if(object == UsbConst.DEVICE_SPEED_FULL){
+		return "Full";
+	}
+
+	if(object == UsbConst.DEVICE_SPEED_HIGH){
+		return "High";
+	}
+
+	return "Invalid";
+}
+
+static UsbDevice synchronizedUsbDevice(UsbDevice usbDevice){
+	return new SynchronizedUsbDevice(usbDevice);
+}
+
+static UsbPipe synchronizedUsbPipe(UsbPipe usbPipe){
+	return new SynchronizedUsbPipe(usbPipe);
+}
+
+private static final char[] hexDigits = new char[] {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+public static String toHexString(byte b){
+	int i = unsignedInt(b);
+	return new String(new char[] {hexDigits[i>>4], hexDigits[i&0x0f],
+	});
+}
+
+public static String toHexString(int i){
+	return new String(new char[] {hexDigits[(i>>28)&0x0f],
+	                              hexDigits[(i>>24)&0x0f],
+	                              hexDigits[(i>>20)&0x0f],
+	                              hexDigits[(i>>16)&0x0f],
+	                              hexDigits[(i>>12)&0x0f],
+	                              hexDigits[(i>>8)&0x0f],
+	                              hexDigits[(i>>4)&0x0f],
+	                              hexDigits[i&0x0f],
+	});
+}
+
+public static String toHexString(long l){
+	throw new RuntimeException("Not implemented");
+
+}
+
+public static String toHexString(long l, char c, int min, int max){
+	throw new RuntimeException("Not implemented");
+
+}
+
+public static String toHexString(short i){
+	return new String(new char[] {hexDigits[(i>>12)&0x0f], hexDigits[(i>>8)&0x0f], hexDigits[(i>>4)&0x0f], hexDigits[i&0x0f],
+	});
+}
+
+public static String toHexString(java.lang.String delimiter, byte[] array){
+	throw new RuntimeException("Not implemented");
+
+}
+
+public static String toHexString(java.lang.String delimiter, byte[] array, int length){
+	throw new RuntimeException("Not implemented");
+
+}
+
+public static String toHexString(java.lang.String delimiter, int[] array){
+	throw new RuntimeException("Not implemented");
+
+}
+
+public static String toHexString(java.lang.String delimiter, int[] array, int length){
+	throw new RuntimeException("Not implemented");
+
+}
+
+public static String toHexString(java.lang.String delimiter, long[] array){
+	throw new RuntimeException("Not implemented");
+
+}
+
+public static String toHexString(java.lang.String delimiter, long[] array, int length){
+	throw new RuntimeException("Not implemented");
+
+}
+
+public static String toHexString(java.lang.String delimiter, short[] array){
+	throw new RuntimeException("Not implemented");
+
+}
+
+public static String toHexString(java.lang.String delimiter, short[] array, int length){
+	throw new RuntimeException("Not implemented");
+
+}
+
+/**
+ @param a Least significant byte
+ @param b Most significant byte
+ */
+public static short toShort(byte a, byte b){
+	return (short)(b<<8|a);
+}
+
+/**
+ @param a Least significant byte
+ @param d Most significant byte
+ */
+public static int toInt(byte a, byte b, byte c, byte d){
+	return d<<24|c<<16|b<<8|a;
+}
+
+public static int toInt(short mss, short lss){
+	throw new RuntimeException("Not implemented");
+
+}
+
+public static long toLong(byte byte7, byte byte6, byte byte5, byte byte4, byte byte3, byte byte2, byte byte1, byte byte0){
+	throw new RuntimeException("Not implemented");
+
+}
+
+public static long toLong(int msi, int lsi){
+	throw new RuntimeException("Not implemented");
+
+}
+
+public static long toLong(short short3, short short2, short short1, short short0){
+	throw new RuntimeException("Not implemented");
+
+}
+
+public static int unsignedInt(byte b){
+	return 0x000000ff&b;
+}
+
+public static int unsignedInt(short s){
+	return 0x0000ffff&s;
+}
+
+public static long unsignedLong(byte b){
+	return 0x00000000000000ff&b;
+}
+
+public static long unsignedLong(int s){
+	return 0x00000000ffffffff&s;
+}
+
+public static long unsignedLong(short s){
+	return 0x000000000000ffff&s;
+}
+
+public static short unsignedShort(byte b){
+	return (short)(0x00ff&b);
+}
 }

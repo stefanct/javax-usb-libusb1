@@ -1,10 +1,11 @@
 package no.hackaton.usb.tools;
 
-import static javax.usb.util.UsbUtil.*;
-
 import javax.usb.*;
-import javax.usb.util.*;
-import java.util.*;
+import java.util.List;
+
+import static javax.usb.extra.ExtraUsbUtil.*;
+import static javax.usb.util.UsbUtil.toHexString;
+import static javax.usb.util.UsbUtil.unsignedInt;
 
 public class lsusb {
     public static void main(String[] args) throws UsbException {
@@ -130,7 +131,7 @@ public class lsusb {
         } catch (UsbException e) {
             if (e instanceof UsbPlatformException) {
                 UsbPlatformException p = (UsbPlatformException) e;
-                return "Unable to get string #" + index + ", libusb: " + UsbUtil.decodeLibusbError(p.getErrorCode());
+                return "Unable to get string #" + index + ", libusb: " + decodeLibusbError(p.getErrorCode());
             }
             return "Unable to get string #" + index;
         }
