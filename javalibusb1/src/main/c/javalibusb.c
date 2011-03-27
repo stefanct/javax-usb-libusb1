@@ -1031,7 +1031,12 @@ JNIEXPORT jint JNICALL Java_javalibusb1_libusb1_fill_1and_1submit_1transfer
         return LIBUSB_ERROR_INVALID_PARAM;
     }
     struct cb_struct *user_data = transfer->user_data;
+
 	struct libusb_device_handle *dev_handle = (struct libusb_device_handle *)(POINTER_STORAGE_TYPE)libusb_device_handle_ptr;
+    if(dev_handle == NULL) {
+        throwUsbExceptionMsgCode(env, -1, "Non-NULL dev_handle required.");
+        goto cleanup;
+    }
 
     unsigned char *data = malloc(length);
     if(data == NULL) {
@@ -1061,6 +1066,7 @@ JNIEXPORT jint JNICALL Java_javalibusb1_libusb1_fill_1and_1submit_1transfer
 	transfer->timeout = timeout;
 	transfer->buffer = data;
 	transfer->length = length;
+    //transfer->flags = 0; // already done by libusb_alloc_transfer
     user_data->irp_g = irp;
     user_data->pipe_g = pipe;
     user_data->byteArray_g = byteArray;
