@@ -1,8 +1,13 @@
 #include "usbw.h"
 
-#include <time.h>
 #include <stdio.h>
 #include <stdarg.h>
+
+#ifdef _POSIX_SOURCE
+    #include <sys/time.h>
+#else
+    #include <time.h>
+#endif
 
 /*
  * TODO: Replace "err=%s" with "ret=%s" or more appropriate message where applicable.
@@ -17,8 +22,7 @@ void usbw_set_trace_calls(int on) {
 
 void usbw_printf(const char* fmt, ...) {
     char buf[1024];
-    char timebuf[20];
-    time_t curtime;
+    char timebuf[32];
     struct tm *loctime;
     va_list args;
 
@@ -30,9 +34,23 @@ void usbw_printf(const char* fmt, ...) {
     vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
 
-    curtime = time(NULL);
+#ifdef _POSIX_SOURCE
+    struct timeval  tv;
+    char temp_timebuf[32];
+    gettimeofday(&tv, NULL);
+    if((loctime = localtime(&tv.tv_sec)) != NULL)
+    {
+        strftime(temp_timebuf, sizeof temp_timebuf, "%Y-%m-%dT%H:%M:%S.%%06u", loctime);
+        snprintf(timebuf, sizeof timebuf, temp_timebuf, tv.tv_usec);
+    } else {
+        snprintf(timebuf, sizeof timebuf, "fixme");
+    }
+#else // _POSIX_SOURCE
+    time_t curtime = time(NULL);
     loctime = localtime(&curtime);
     strftime (timebuf, sizeof(timebuf), "%Y-%m-%dT%H:%M:%S", loctime);
+#endif // _POSIX_SOURCE
+
     fprintf(stderr, "%s - %s", timebuf, buf);
     fflush(stderr);
 }
