@@ -125,7 +125,6 @@ class libusb1 implements Closeable {
         String p = "lib/" + aol + "/jni/" + name;
 
         URL url = libusb1.class.getClassLoader().getResource(p);
-//        System.out.println("url = " + url);
 
         if (url == null) {
             return false;
@@ -142,7 +141,6 @@ class libusb1 implements Closeable {
         InputStream is = null;
         try {
             file = File.createTempFile("javalibusb1", "");
-            System.out.println("file = " + file);
 
             is = url.openStream();
             os = new FileOutputStream(file);
@@ -180,7 +178,6 @@ class libusb1 implements Closeable {
 
         String osName = System.getProperty("os.name");
 
-//        System.out.println("osName = " + osName);
         if (osName.equals("Mac OS X")) {
             osName = "MacOSX";
         } else if (osName.equals("Linux")) {

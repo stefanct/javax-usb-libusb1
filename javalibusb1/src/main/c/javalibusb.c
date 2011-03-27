@@ -1082,7 +1082,6 @@ JNIEXPORT jint JNICALL Java_javalibusb1_libusb1_cancel_1transfer
 
 static void asyncCallback(struct libusb_transfer *transfer)
 {
-	fprintf(stderr, "libusb called back for: %p\n", transfer);
 	if(transfer == NULL)
         return;
     int errorCode;
@@ -1146,8 +1145,6 @@ exception:
                 break;
         }
         (*env)->CallVoidMethod(env, irp, usbIrpSetUsbException, e);
-        //if((*env)->ExceptionCheck(env))
-            //goto cleanup; // we _need_ to call back!
     }
 
     (*env)->CallVoidMethod(env, pipe, libusb1UsbPipeAsyncCallback, irp);

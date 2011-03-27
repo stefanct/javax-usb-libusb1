@@ -227,7 +227,7 @@ private static class AsyncHandler extends Thread{
 			try{
 				libusb.handle_events_timeout(timeoutUS);
 			} catch(Exception e){
-				e.printStackTrace();
+				e.printStackTrace(); // should never happen
 			}
 		}
 	}

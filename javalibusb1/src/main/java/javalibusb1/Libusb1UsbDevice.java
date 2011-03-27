@@ -164,7 +164,6 @@ public class Libusb1UsbDevice implements UsbDevice, Closeable {
 
     public UsbConfiguration getUsbConfiguration(byte number) {
         if(number == 0) {
-            System.err.println("Usb configuration #0 was requested.");
             return null;
         }
 

@@ -88,7 +88,6 @@ public class Libusb1UsbPipe implements UsbPipe {
 													   irp.getLength(), irp,
 													   0);
 			if(0 == err){
-				System.err.println(irp+" submitted as 0x"+Long.toHexString(trans_ptr));
 				return;
 			}
 			ex = new UsbPlatformException("Submitting failed", err);
@@ -109,7 +108,6 @@ public class Libusb1UsbPipe implements UsbPipe {
 		synchronized(irp){
 			irp.notifyAll();
 		}
-		System.err.println(irp+" completed");
 	}
 
     public void close() {
@@ -196,7 +194,6 @@ public class Libusb1UsbPipe implements UsbPipe {
 				}
 			}
 		    if(irp.isUsbException()){
-			    System.err.println(irp+" failed");
 			    throw irp.getUsbException();
 		    }
 	    }catch(InterruptedException cause){
