@@ -1,79 +1,110 @@
 package javax.usb;
 
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Properties;
 
-public final class UsbHostManager {
+public final class UsbHostManager{
 
-    public static final String JAVAX_USB_USBSERVICES_PROPERTY = "javax.usb.services";
+public static final String JAVAX_USB_SERVICES = "javax.usb.services";
 
-    public static final String JAVAX_USB_PROPERTIES_FILE = "javax.usb.properties";
+public static final String JAVAX_USB_PROPERTIES_FILE = "javax.usb.properties";
 
-    private static UsbServices usbServices;
+private static UsbServices usbServices = null;
 
-    private final static Object lock = new Object();
+private final static Object lock = new Object();
 
-    private UsbHostManager() {
-    }
+private UsbHostManager(){
+}
 
-    public static UsbServices getUsbServices() throws UsbException, SecurityException {
-        synchronized (lock) {
-            if (usbServices == null) {
-                usbServices = initialize();
-            }
-            return usbServices;
-        }
-    }
+public static UsbServices getUsbServices() throws UsbException, SecurityException{
+	synchronized(lock){
+		if(usbServices == null){
+			usbServices = initialize();
+		}
+		return usbServices;
+	}
+}
 
-    private static UsbServices initialize() throws UsbException, SecurityException {
-        Properties properties = getProperties();
+private static UsbServices initialize() throws UsbException, SecurityException{
+	Properties properties = loadProperties();
+	String services = getServicesName(properties);
 
-        String services = properties.getProperty(JAVAX_USB_USBSERVICES_PROPERTY);
+	// TODO: Use the thread's current context class loader?
+	try{
+		return (UsbServices)UsbHostManager.class.getClassLoader().loadClass(services).getConstructor(Properties.class).newInstance(properties);
+	} catch(ClassNotFoundException e){
+		throw new UsbPlatformException("Unable to load UsbServices class '" + services + '\'', e);
+	} catch(InstantiationException e){
+		throw new UsbPlatformException("Unable to instantiate class '" + services + '\'', e);
+	} catch(IllegalAccessException e){
+		throw new UsbPlatformException("Unable to instantiate class '" + services + '\'', e);
+	} catch(ClassCastException e){
+		throw new UsbPlatformException("Class " + services + " is not an instance of javax.usb.UsbServices", e);
+	} catch(NoSuchMethodException e){
+		throw new UsbPlatformException("Class " + services + " does not have the needed constructor", e);
+	} catch(InvocationTargetException e){
+		throw new UsbPlatformException("Class " + services + " has thrown an exception while initializing", e);
+	}
+}
 
-        if (services == null) {
-            throw new UsbException("Missing required property '" + JAVAX_USB_USBSERVICES_PROPERTY + "' from configuration file.");
-        }
+private static Properties loadProperties() throws UsbException{
+	String fileName = System.getenv(getEnvFromProperty(JAVAX_USB_PROPERTIES_FILE));
+	if(fileName == null){
+		fileName = System.getProperty(JAVAX_USB_PROPERTIES_FILE);
+		if(fileName == null){
+			// default
+			fileName = JAVAX_USB_PROPERTIES_FILE;
+		}
+	}
 
-        // TODO: Use the thread's current context class loader?
+	// load the properties file
+	InputStream stream = UsbHostManager.class.getClassLoader().getResourceAsStream(fileName);
+	if(stream == null){
+		return null;
+	}
 
-        Class<?> usbServicesClass;
+	try{
+		Properties properties = new Properties();
+		properties.load(stream);
+		return properties;
+	} catch(IOException e){
+		throw new UsbPlatformException("Error while reading configuration file", e);
+	} finally{
+		try{
+			stream.close();
+		} catch(IOException e){
+			// ignore
+		}
+	}
+}
 
-        try {
-            usbServicesClass = UsbHostManager.class.getClassLoader().loadClass(services);
+public static String getServicesName(Properties properties) throws UsbException, SecurityException{
+	// first try to get the services name directly form the environment or system properties
+	String servicesName = System.getenv(getEnvFromProperty(JAVAX_USB_SERVICES));
+	if(servicesName != null){
+		return servicesName;
+	}
 
-            return (UsbServices) usbServicesClass.newInstance();
-        } catch (ClassNotFoundException e) {
-            throw new UsbPlatformException("Unable to load UsbServices class '" + services + "'.", e);
-        } catch (InstantiationException e) {
-            throw new UsbPlatformException("Unable to instantiate class '" + services + "'.", e);
-        } catch (IllegalAccessException e) {
-            throw new UsbPlatformException("Unable to instantiate class '" + services + "'.", e);
-        } catch (ClassCastException e) {
-            throw new UsbPlatformException("Class " + services + " is not an instance of javax.usb.UsbServices.");
-        }
-    }
+	servicesName = System.getProperty(JAVAX_USB_SERVICES);
+	if(servicesName != null){
+		return servicesName;
+	}
 
-    public static Properties getProperties() throws UsbException, SecurityException {
-        InputStream stream = UsbHostManager.class.getClassLoader().
-            getResourceAsStream(JAVAX_USB_PROPERTIES_FILE);
+	// else try to determine the name of the services class from properties
+	servicesName = properties.getProperty(JAVAX_USB_SERVICES);
+	if(servicesName != null){
+		return servicesName;
+	}
+	throw new UsbException("Neither environment variable '"
+	                       + getEnvFromProperty(JAVAX_USB_SERVICES)
+	                       + "' nor property '"
+	                       + JAVAX_USB_SERVICES
+	                       + "' in the configuration file or in the system properties are set.");
+}
 
-        if (stream == null) {
-            throw new UsbException("Unable to load configuration file '" + JAVAX_USB_PROPERTIES_FILE + "'.");
-        }
-
-        Properties properties;
-        try {
-            properties = new Properties();
-            properties.load(stream);
-        } catch (IOException e) {
-            throw new UsbPlatformException("Error while reading configuration file.", e);
-        } finally {
-            try {
-                stream.close();
-            } catch (IOException e) {
-                // ignore
-            }
-        }
-        return properties;
-    }
+private static String getEnvFromProperty(String propertyName){
+	return propertyName.toUpperCase().replace('.', '_');
+}
 }

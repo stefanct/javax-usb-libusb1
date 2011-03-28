@@ -10,7 +10,7 @@ import java.util.List;
 
 import static javalibusb1.Libusb1UsbServices.*;
 import static javalibusb1.Libusb1Utils.closeSilently;
-import static javalibusb1.Libusb1Utils.loadProperty;
+import static javalibusb1.Libusb1Utils.getProperty;
 
 class libusb1 implements Closeable {
 
@@ -96,7 +96,7 @@ class libusb1 implements Closeable {
 //    public static void free_transfer(long trans_ptr);
 
     static {
-        String path = loadProperty(JAVAX_USB_LIBUSB_JAVALIBUSB1_PATH_PROPERTY, JAVAX_USB_LIBUSB_JAVALIBUSB1_PATH_ENV);
+        String path = getProperty(JAVAX_USB_LIBUSB_JAVALIBUSB1_PATH_PROPERTY);
         String aol = getAol();
 
         if (path != null && loadFromPath(path)) {
@@ -163,7 +163,7 @@ class libusb1 implements Closeable {
 
             return true;
         } catch (IOException e) {
-            throw new RuntimeException("Unable to load native library.", e);
+            throw new RuntimeException("Unable to load native library", e);
         } finally {
             if(file != null) {
                 file.delete();

@@ -4,8 +4,7 @@ import javax.usb.*;
 import javax.usb.event.UsbServicesListener;
 import javax.usb.impl.AbstractRootUsbHub;
 import javax.usb.impl.DefaultUsbDeviceDescriptor;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 import static java.lang.Boolean.parseBoolean;
 import static java.lang.Integer.parseInt;
@@ -19,6 +18,7 @@ import static javax.usb.UsbConst.HUB_CLASSCODE;
  * <li>Load the settings</li>
  * <li>Find and load the native <code>javalibusb1</code> library for the current platform</li>
  * <li>Create an libusb context</li>
+ * <li>Create and start a background thread to handle asynchronous requests</li>
  * </ol>
  * <h2>Settings loading</h2>
  * The library has three settings:
@@ -37,33 +37,15 @@ import static javax.usb.UsbConst.HUB_CLASSCODE;
  * </ul>
  * The values for the settings are loaded from three places, first one wins:
  * <ul>
- * <li>The javax.usb.properties configuration file.</li>
- * <li>System properties with <code>System.getProperty()</code>.</li>
  * <li>System environment with <code>System.getenv()</code>.</li>
+ * <li>System properties with <code>System.getProperty()</code>.</li>
+ * <li>The javax.usb.properties configuration file.</li>
  * </ul>
- * The keys used are:
+ * The keys used are: (For environment variables all dots '.' are replaces with underscores '_' and all characters are changed to upper case.)
  * <ul>
- * <li>Trace:
- * <ul>
- * <li>In javax.usb.properties: {@link #JAVAX_USB_LIBUSB_TRACE_PROPERTY}</li>
- * <li>System property: {@link #JAVAX_USB_LIBUSB_TRACE_PROPERTY}</li>
- * <li>System environment: {@link #JAVAX_USB_LIBUSB_TRACE_ENV}</li>
- * </ul>
- * </li>
- * <li>Debug:
- * <ul>
- * <li>In javax.usb.properties: {@link #JAVAX_USB_LIBUSB_DEBUG_PROPERTY}</li>
- * <li>System property: {@link #JAVAX_USB_LIBUSB_DEBUG_PROPERTY}</li>
- * <li>System environment: {@link #JAVAX_USB_LIBUSB_DEBUG_ENV}</li>
- * </ul>
- * </li>
- * <li>Library path:
- * <ul>
- * <li>In javax.usb.properties: {@link #JAVAX_USB_LIBUSB_JAVALIBUSB1_PATH_PROPERTY}</li>
- * <li>System property: {@link #JAVAX_USB_LIBUSB_JAVALIBUSB1_PATH_PROPERTY}</li>
- * <li>System environment: {@link #JAVAX_USB_LIBUSB_JAVALIBUSB1_PATH_ENV}</li>
- * </ul>
- * </li>
+ * <li>Trace: {@link #JAVAX_USB_LIBUSB_TRACE_PROPERTY}</li>
+ * <li>Debug: {@link #JAVAX_USB_LIBUSB_DEBUG_PROPERTY}</li>
+ * <li>Library path: {@link #JAVAX_USB_LIBUSB_JAVALIBUSB1_PATH_PROPERTY}</li>
  * </ul>
  * </p>
  * <h2>Load the library</h2>
@@ -99,23 +81,14 @@ public class Libusb1UsbServices implements UsbServices {
     // TODO: Load from Maven artifact or NarSystem
     public static final String VERSION = "1.0.1-1-SNAPSHOT";
 
-    /**
-     * The name of the property that will be looked up from the javax.usb.properties file or the system property.
-     */
     public static final String JAVAX_USB_LIBUSB_TRACE_PROPERTY = "javax.usb.libusb.trace";
-
     public static final String JAVAX_USB_LIBUSB_DEBUG_PROPERTY = "javax.usb.libusb.debug";
-
-    public static final String JAVAX_USB_LIBUSB_DEBUG_ENV = "JAVAX_USB_LIBUSB_DEBUG";
-
-    public static final String JAVAX_USB_LIBUSB_TRACE_ENV = "JAVAX_USB_LIBUSB_TRACE";
 
     /**
      * The system property use to look up the path to the shared library that the implementation will use.
      */
     public static final String JAVAX_USB_LIBUSB_JAVALIBUSB1_PATH_PROPERTY = "javax.usb.libusb.javalibusb1.path";
 
-    public static final String JAVAX_USB_LIBUSB_JAVALIBUSB1_PATH_ENV = "JAVAX_USB_LIBUSB_JAVALIBUSB1_PATH";
 
     UsbDeviceDescriptor rootUsbDeviceDescriptorInstance = new DefaultUsbDeviceDescriptor(
         (short) 0x0200,         // USB 2.0
@@ -134,14 +107,13 @@ public class Libusb1UsbServices implements UsbServices {
     private libusb1 libusb;
     private List<UsbDevice> devices;
 
-    public Libusb1UsbServices() throws UsbException {
-        boolean trace;
-        int debug_level = 0;
+    public Libusb1UsbServices(Properties props) throws UsbException {
+		Libusb1Utils.addProperties(props);
+		boolean trace = parseBoolean(Libusb1Utils.getProperty(JAVAX_USB_LIBUSB_TRACE_PROPERTY));
 
-        trace = parseBoolean(Libusb1Utils.loadProperty(JAVAX_USB_LIBUSB_TRACE_PROPERTY, JAVAX_USB_LIBUSB_TRACE_ENV));
-
-        String s = Libusb1Utils.loadProperty(JAVAX_USB_LIBUSB_DEBUG_PROPERTY, JAVAX_USB_LIBUSB_DEBUG_ENV);
-        if (s != null) {
+	    String s = Libusb1Utils.getProperty(JAVAX_USB_LIBUSB_DEBUG_PROPERTY);
+	    int debug_level = 0;
+	    if (s != null) {
             debug_level = parseDebugLevel(s);
         }
 
@@ -204,7 +176,7 @@ private class LibUsb1RootUsbHub extends AbstractRootUsbHub {
         try {
             return parseInt(s);
         } catch (NumberFormatException e) {
-            throw new RuntimeException("Not a valid debug level: '" + s + "'.");
+            throw new RuntimeException("Not a valid debug level: '" + s + '\'');
         }
     }
 
