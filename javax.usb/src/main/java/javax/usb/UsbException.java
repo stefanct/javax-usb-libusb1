@@ -1,14 +1,24 @@
 package javax.usb;
 
-/**
- * @author <a href="mailto:trygvis@java.no">Trygve Laugst&oslash;l</a>
- * @version $Id$
- */
-public class UsbException extends Exception {
-    public UsbException() {
-    }
+public class UsbException extends Exception{
 
-    public UsbException(String message) {
-        super(message);
-    }
+public UsbException(){
+	super();
+}
+
+public UsbException(String message){
+	super(message);
+}
+
+public UsbException(String message, Throwable cause){
+	super(message, cause);
+}
+
+public UsbException(Throwable cause){
+	super(cause);
+}
+
+public UsbException(String s, Exception cause){
+	super(s, cause);
+}
 }
