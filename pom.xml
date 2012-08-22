@@ -166,10 +166,28 @@
         included.
         -->
         <nar.optionSet.c>-Wall -Wno-long-long -Wpointer-arith -fPIC -g -m32</nar.optionSet.c>
-        <nar.optionSet.linker>-m32 -lrt</nar.optionSet.linker>
+        <nar.optionSet.linker>-m32</nar.optionSet.linker>
         <libusb.configure.args/>
         <libusb.cflags>-m32</libusb.cflags>
       </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-nar-plugin</artifactId>
+            <version>2.1-SNAPSHOT</version>
+            <extensions>true</extensions>
+            <configuration>
+              <linker>
+                <sysLibs>
+                  <sysLib>
+                    <name>rt</name>
+                  </sysLib>
+                </sysLibs>
+              </linker>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
     <profile>
       <id>amd64-Linux-gpp</id>
@@ -181,10 +199,28 @@
       </activation>
       <properties>
         <nar.optionSet.c>-Wall -Wno-long-long -Wpointer-arith -fPIC -g -m64</nar.optionSet.c>
-        <nar.optionSet.linker>-m64 -lrt</nar.optionSet.linker>
+        <nar.optionSet.linker>-m64</nar.optionSet.linker>
         <libusb.configure.args>--with-pic</libusb.configure.args>
         <libusb.cflags>-m64</libusb.cflags>
       </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-nar-plugin</artifactId>
+            <version>2.1-SNAPSHOT</version>
+            <extensions>true</extensions>
+            <configuration>
+              <linker>
+                <sysLibs>
+                  <sysLib>
+                    <name>rt</name>
+                  </sysLib>
+                </sysLibs>
+              </linker>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
     <profile>
       <id>i386-MacOSX-gpp</id>
