@@ -40,7 +40,7 @@
             <configuration>
               <workingDirectory>../libusb-git</workingDirectory>
               <executable>bash</executable>
-              <commandlineArgs>-c "CFLAGS='${libusb.cflags}' ./configure --prefix=${libusb.home} ${libusb.configure.args}"
+              <commandlineArgs>-c "CFLAGS='${libusb.cflags}' ./configure --prefix=`pwd` ${libusb.configure.args}"
               </commandlineArgs>
             </configuration>
           </execution>

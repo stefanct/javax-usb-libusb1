@@ -107,9 +107,6 @@
             on your platform.
             -->
             <requireProperty>
-              <property>libusb.home</property>
-            </requireProperty>
-            <requireProperty>
               <property>libusb.cflags</property>
             </requireProperty>
             <requireProperty>
@@ -138,6 +135,16 @@
         <module>libusb</module>
       </modules>
     </profile>
+	<profile>
+		<activation>
+			<property>
+				<name>!libusb.home</name>
+			</property>
+		</activation>
+		<properties>
+			 <libusb.home>${basedir}/../libusb-git/</libusb.home>
+		</properties>
+	</profile>
 
     <!--
     This is a list of platform-specific settings:
