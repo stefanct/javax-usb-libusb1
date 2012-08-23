@@ -1,6 +1,6 @@
 [submodule "libusb-git"]
 	path = libusb-git
-	url = git://git.libusb.org/libusb-trygvis
+	url = http://git.libusb.org/libusb.git
 [submodule "maven-nar-plugin"]
 	path = maven-nar-plugin
 	url = http://github.com/duns/maven-nar-plugin.git
