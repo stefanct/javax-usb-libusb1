@@ -56,6 +56,12 @@
               </lib>
             </libs>
           </linker>
+          <javah>
+            <classPaths>
+              <classPath>${basedir}/../javalibusb1/target/classes</classPath>
+              <classPath>${basedir}/../javax.usb/target/classes</classPath>
+            </classPaths>
+          </javah>
         </configuration>
       </plugin>
     </plugins>
