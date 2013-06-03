@@ -35,10 +35,11 @@ public class Libusb1UsbInterface implements UsbInterface {
     // UsbInterface Implementation
     // -----------------------------------------------------------------------
 
-    // Should do set_configuration+claim_interface
     public void claim() throws UsbException {
-        nativeSetConfiguration(device.libusb_device_ptr, configuration.configurationDescriptor.bConfigurationValue());
-        configuration.setActive(true);
+	    if (!configuration.isActive()) {
+	        nativeSetConfiguration(device.libusb_device_ptr, configuration.configurationDescriptor.bConfigurationValue());
+	        configuration.setActive(true);
+	    }
 
         libusb_device_handle_ptr = nativeClaimInterface(device.libusb_device_ptr, descriptor.bInterfaceNumber());
     }
