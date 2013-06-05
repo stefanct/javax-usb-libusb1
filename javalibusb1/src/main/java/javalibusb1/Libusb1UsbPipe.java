@@ -67,6 +67,10 @@ public class Libusb1UsbPipe implements UsbPipe {
     }
 
     public void asyncSubmit(UsbIrp irp) throws UsbException{
+	    internalAsyncSubmit(irp);
+    }
+
+    private long internalAsyncSubmit(UsbIrp irp) throws UsbException{
 	    // TODO: isochronous and control transfers
 	    UsbException ex;
 	    try{
@@ -88,7 +92,7 @@ public class Libusb1UsbPipe implements UsbPipe {
 													   irp.getLength(), irp,
 													   0);
 			if(0 == err){
-				return;
+				return trans_ptr;
 			}
 			ex = new UsbPlatformException("Submitting failed", err);
 		} catch(UsbException e){
@@ -186,12 +190,14 @@ public class Libusb1UsbPipe implements UsbPipe {
 	        fireUsbPipeErrorEvent(new UsbPipeErrorEvent(this, irp));
 	        throw e;
 	    }
+	    long trans_ptr = 0;
 	    try{
 			synchronized(irp){
-				asyncSubmit(irp);
+				trans_ptr = internalAsyncSubmit(irp);
 				while(!irp.isComplete()){
 					irp.wait();
 				}
+				trans_ptr = 0;
 			}
 		    if(irp.isUsbException()){
 			    throw irp.getUsbException();
@@ -200,6 +206,9 @@ public class Libusb1UsbPipe implements UsbPipe {
 		    UsbException e = new UsbException("Interrupted.", cause);
 		    irp.setUsbException(e);
 		    throw e;
+	    }finally{
+		    if (trans_ptr != 0)
+		        libusb1.cancel_transfer(trans_ptr);
 	    }
 
     }
